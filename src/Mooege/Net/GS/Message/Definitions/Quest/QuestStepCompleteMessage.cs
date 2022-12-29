@@ -17,38 +17,38 @@
  */
 
 using System.Text;
+using Mooege.Net.GS.Message.Fields;
+using Mooege.Core.GS.Items;
+using D3.Quests;
+using System.Reflection;
+using System;
 
-namespace Mooege.Net.GS.Message.Definitions.Misc
+namespace Mooege.Net.GS.Message.Definitions.Quests
 {
-    /// <summary>
-    /// Sent by the client, when the player uses cauldron of jordan on an item
-    /// </summary>
-    [Message(Opcodes.RequestUseCauldronOfJordanMessage)]
-    public class RequestUseCauldronOfJordanMessage : GameMessage
+    [Message(Opcodes.QuestStepCompleteMessage)]
+    public class QuestStepCompleteMessage : GameMessage
     {
-        public uint ActorID; // Id of the target
 
-        public RequestUseCauldronOfJordanMessage() : base(Opcodes.RequestUseCauldronOfJordanMessage) { }
+        public QuestStepComplete QuestStepComplete;
+
+        public QuestStepCompleteMessage() : base(Opcodes.QuestStepCompleteMessage) { }
 
         public override void Parse(GameBitBuffer buffer)
         {
-            ActorID = buffer.ReadUInt(32);
+            QuestStepComplete = QuestStepComplete.ParseFrom(buffer.ReadBlob(32));
         }
-
+             
         public override void Encode(GameBitBuffer buffer)
         {
-            buffer.WriteUInt(32, ActorID);
+            buffer.WriteBlob(32, QuestStepComplete.ToByteArray());
         }
 
         public override void AsText(StringBuilder b, int pad)
         {
             b.Append(' ', pad);
-            b.AppendLine("RequestUseCauldronOfJordanMessage:");
+            b.AppendLine("QuestStepCompleteMessage:");
             b.Append(' ', pad++);
-            b.AppendLine("{");
-            b.Append(' ', pad); b.AppendLine("ActorID: 0x" + ActorID.ToString("X8") + " (" + ActorID + ")");
-            b.Append(' ', --pad);
-            b.AppendLine("}");
+            b.Append(QuestStepComplete.ToString());
         }
 
     }

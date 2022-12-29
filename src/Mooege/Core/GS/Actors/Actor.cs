@@ -88,7 +88,7 @@ namespace Mooege.Core.GS.Actors
         /// </summary>
         public virtual PRTransform Transform
         {
-            get { return new PRTransform { Quaternion = new Quaternion { W = this.FacingAngle, Vector3D = this.RotationAxis }, Vector3D = this.Position }; }
+            get { return new PRTransform { Quaternion = new Quaternion { W = this.RotationW, Vector3D = this.RotationAxis }, Vector3D = this.Position }; }
         }
 
         /// <summary>
@@ -145,7 +145,7 @@ namespace Mooege.Core.GS.Actors
         public Mooege.Common.MPQ.FileFormats.AnimSet AnimationSet { get; private set; }
 
         // TODO: read them from MPQ data's instead /raist.
-        public float WalkSpeed = 0.2797852f;
+        public float WalkSpeed = 0.108f;//0.2797852f;
         public float RunSpeed = 0.3598633f;
 
         // Some ACD uncertainties /komiga.
@@ -285,7 +285,7 @@ namespace Mooege.Core.GS.Actors
         public void ChangeWorld(World world, StartingPoint startingPoint)
         {
             this.RotationAxis = startingPoint.RotationAxis;
-            this.FacingAngle = startingPoint.FacingAngle;
+            this.RotationW = startingPoint.RotationW;
 
             this.ChangeWorld(world, startingPoint.Position);
         }
@@ -527,6 +527,13 @@ namespace Mooege.Core.GS.Actors
             
         }
 
+        /// <summary>
+        /// Called when a player moves close to the actor
+        /// </summary>
+        public virtual void OnPlayerApproaching(Player player)
+        {
+        }
+
         #endregion
 
         #region cooked messages
@@ -574,7 +581,9 @@ namespace Mooege.Core.GS.Actors
         {
             if (this.Tags == null) return;
 
-            this.Scale = Tags.ContainsKey(MarkerKeys.Scale) ? Tags[MarkerKeys.Scale] : 1;
+            // load scale from actor data and override it with marker tags if one is set
+            this.Scale = ActorData.TagMap.ContainsKey(ActorKeys.Scale) ? ActorData.TagMap[ActorKeys.Scale] : 1;
+            this.Scale = Tags.ContainsKey(MarkerKeys.Scale) ? Tags[MarkerKeys.Scale] : this.Scale ;
 
 
             if (Tags.ContainsKey(MarkerKeys.QuestRange))
@@ -606,14 +615,14 @@ namespace Mooege.Core.GS.Actors
 
         public void Move(Vector3D point, float facingAngle)
         {
-            this.FacingAngle = facingAngle;
+            this.SetFacingRotation(facingAngle);
 
             var movementMessage = new NotifyActorMovementMessage
             {
                 ActorId = (int)this.DynamicID,
                 Position = point,
                 Angle = facingAngle,
-                Field3 = false,
+                TurnImmediately = false,
                 Speed = this.WalkSpeed,
                 Field5 = 0,
                 AnimationTag = this.AnimationSet == null ? 0 : this.AnimationSet.GetAnimationTag(Mooege.Common.MPQ.FileFormats.AnimationTags.Walk)

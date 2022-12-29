@@ -32,7 +32,6 @@ using Mooege.Core.GS.Common.Types.TagMap;
 
 namespace Mooege.Core.GS.Actors.Implementations
 {
-    [HandledSNO(6442 /* Waypoint.acr */, 192164 /* Waypoint_OldTristram.acr */)]
     public sealed class Waypoint : Gizmo
     {
         public int WaypointId { get; private set; }
@@ -95,10 +94,10 @@ namespace Mooege.Core.GS.Actors.Implementations
                     {
                         new PlayAnimationMessageSpec()
                         {
-                            Field0 = 4,
-                            Field1 = 0x2f761,
-                            Field2 = 0,
-                            Field3 = 1f,
+                            Duration = 4,
+                            AnimationSNO = 0x2f761,
+                            PermutationIndex = 0,
+                            Speed = 1f,
                         }
                     }
             }, this);

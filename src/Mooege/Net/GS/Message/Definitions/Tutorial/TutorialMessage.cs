@@ -17,38 +17,34 @@
  */
 
 using System.Text;
+using D3.Profile;
 
 namespace Mooege.Net.GS.Message.Definitions.Misc
 {
-    /// <summary>
-    /// Sent by the client, when the player uses nephalem cube on an item
-    /// </summary>
-    [Message(Opcodes.RequestUseNephalemCubeMessage)]
-    public class RequestUseNephalemCubeMessage : GameMessage
+    [Message(Opcodes.TutorialMessage)]
+    public class TutorialMessage : GameMessage
     {
-        public uint ActorID; // Id of the target
 
-        public RequestUseNephalemCubeMessage() : base(Opcodes.RequestUseNephalemCubeMessage) { }
+        public D3.GameMessage.TutorialMessage TutorialMessageDefinition;
+
+        public TutorialMessage() : base(Opcodes.TutorialMessage) { }
 
         public override void Parse(GameBitBuffer buffer)
         {
-            ActorID = buffer.ReadUInt(32);
+            TutorialMessageDefinition = D3.GameMessage.TutorialMessage.ParseFrom(buffer.ReadBlob(32));
         }
 
         public override void Encode(GameBitBuffer buffer)
         {
-            buffer.WriteUInt(32, ActorID);
+            buffer.WriteBlob(32, TutorialMessageDefinition.ToByteArray());
         }
 
         public override void AsText(StringBuilder b, int pad)
         {
             b.Append(' ', pad);
-            b.AppendLine("RequestUseNephalemCubeMessage:");
+            b.AppendLine("TutorialMessage:");
             b.Append(' ', pad++);
-            b.AppendLine("{");
-            b.Append(' ', pad); b.AppendLine("ActorID: 0x" + ActorID.ToString("X8") + " (" + ActorID + ")");
-            b.Append(' ', --pad);
-            b.AppendLine("}");
+            b.Append(TutorialMessageDefinition.ToString());
         }
 
     }

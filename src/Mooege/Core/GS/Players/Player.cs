@@ -50,6 +50,7 @@ using Mooege.Core.GS.Actors.Implementations.Hirelings;
 using Mooege.Net.GS.Message.Definitions.Hireling;
 using System;
 using Mooege.Common.Helpers;
+using Mooege.Net.GS.Message.Definitions.ACD;
 
 namespace Mooege.Core.GS.Players
 {
@@ -187,7 +188,7 @@ namespace Mooege.Core.GS.Players
 
             this.Field2 = 0x00000009;
             this.Scale = this.ModelScale;
-            this.FacingAngle = 0.05940768f;
+            this.RotationW = 0.05940768f;
             this.RotationAxis = new Vector3D(0f, 0f, 0.9982339f);
             this.Field7 = -1;
             this.NameSNOId = -1;
@@ -198,6 +199,9 @@ namespace Mooege.Core.GS.Players
             this.Conversations = new ConversationManager(this, this.World.Game.Quests);
             this.ExpBonusData = new ExpBonusData(this);
             this.SelectedNPC = null;
+
+            // TODO SavePoint from DB
+            this.SavePointData = new SavePointData() { snoWorld = -1, SavepointId = -1 };
 
             #region Attributes
 
@@ -475,7 +479,20 @@ namespace Mooege.Core.GS.Players
             else if (message is RequestAddSocketMessage) OnRequestAddSocket(client, (RequestAddSocketMessage)message);
             else if (message is HirelingDismissMessage) OnHirelingDismiss();
             else if (message is SocketSpellMessage) OnSocketSpell(client, (SocketSpellMessage)message);
+            else if (message is PlayerTranslateFacingMessage) OnTranslateFacing(client, (PlayerTranslateFacingMessage)message);
             else return;
+        }
+
+        private void OnTranslateFacing(GameClient client, PlayerTranslateFacingMessage message)
+        {
+            this.SetFacingRotation(message.Angle);
+
+            World.BroadcastExclusive(new ACDTranslateFacingMessage
+            {
+                ActorId = this.DynamicID,
+                Angle = message.Angle,
+                TurnImmediately = message.TurnImmediately
+            }, this);
         }
 
         private void OnAssignActiveSkill(GameClient client, AssignActiveSkillMessage message)
@@ -628,7 +645,7 @@ namespace Mooege.Core.GS.Players
                 this.Position = message.Position;
 
             if (message.Angle != null)
-                this.FacingAngle = message.Angle.Value;
+                this.SetFacingRotation(message.Angle.Value);
 
 
             var msg = new NotifyActorMovementMessage
@@ -636,7 +653,7 @@ namespace Mooege.Core.GS.Players
                 ActorId = message.ActorId,
                 Position = this.Position,
                 Angle = message.Angle,
-                Field3 = false,
+                TurnImmediately = false,
                 Speed = message.Speed,
                 Field5 = message.Field5,
                 AnimationTag = message.AnimationTag
@@ -646,6 +663,9 @@ namespace Mooege.Core.GS.Players
             this.RevealActorsToPlayer();
 
             this.World.BroadcastExclusive(msg, this); // TODO: We should be instead notifying currentscene we're in. /raist.
+
+            foreach (var actor in GetActorsInRange())
+                actor.OnPlayerApproaching(this);
 
             this.CollectGold();
             this.CollectHealthGlobe();
@@ -841,7 +861,7 @@ namespace Mooege.Core.GS.Players
                 Field2 = 0x00000000,
                 Gender = Toon.Gender,
                 PlayerSavedData = this.GetSavedData(),
-                Field5 = 0x00000000,
+                QuestRewardHistoryEntriesCount = 0x00000000,
                 tQuestRewardHistory = QuestRewardHistory,
             };
         }
@@ -1039,8 +1059,8 @@ namespace Mooege.Core.GS.Players
                 HotBarButtons = this.SkillSet.HotBarSkills,
                 SkilKeyMappings = this.SkillKeyMappings,
 
-                Field2 = 0x00000000,
-                Field3 = 0x7FFFFFFF,
+                PlaytimeTotal = 0x00000000,
+                WaypointFlags = 0x7FFFFFFF,
 
                 Field4 = new HirelingSavedData()
                 {
@@ -1054,10 +1074,12 @@ namespace Mooege.Core.GS.Players
                 LearnedLore = this.LearnedLore,
                 snoActiveSkills = this.SkillSet.ActiveSkills,
                 snoTraits = this.SkillSet.PassiveSkills,
-                Field9 = new SavePointData { snoWorld = -1, Field1 = -1, },
+                SavePointData = new SavePointData { snoWorld = -1, SavepointId = -1, },
                 m_SeenTutorials = this.SeenTutorials,
             };
         }
+
+        public SavePointData SavePointData { get; set; }
 
         public LearnedLore LearnedLore = new LearnedLore()
         {
@@ -1139,41 +1161,41 @@ namespace Mooege.Core.GS.Players
 
         #region cooked messages
 
-        public GenericBlobMessage GetPlayerBanner()
+        public PlayerBannerMessage GetPlayerBanner()
         {
             var playerBanner = D3.GameMessage.PlayerBanner.CreateBuilder()
-                .SetPlayerIndex((uint) this.PlayerIndex)
+                .SetPlayerIndex((uint)this.PlayerIndex)
                 .SetBanner(this.Toon.Owner.BannerConfiguration)
                 .Build();
 
-            return new GenericBlobMessage(Opcodes.GenericBlobMessage6) {Data = playerBanner.ToByteArray()};
+            return new PlayerBannerMessage() { PlayerBanner = playerBanner };
         }
 
-        public GenericBlobMessage GetBlacksmithData()
+        public BlacksmithDataInitialMessage GetBlacksmithData()
         {
             var blacksmith = D3.ItemCrafting.CrafterData.CreateBuilder()
                 .SetLevel(45)
                 .SetCooldownEnd(0)
                 .Build();
-            return new GenericBlobMessage(Opcodes.GenericBlobMessage9) { Data = blacksmith.ToByteArray() };
+            return new BlacksmithDataInitialMessage() { CrafterData = blacksmith };
         }
 
-        public GenericBlobMessage GetJewelerData()
+        public JewelerDataInitialMessage GetJewelerData()
         {
             var jeweler = D3.ItemCrafting.CrafterData.CreateBuilder()
                 .SetLevel(9)
                 .SetCooldownEnd(0)
                 .Build();
-            return new GenericBlobMessage(Opcodes.GenericBlobMessage10) { Data = jeweler.ToByteArray() };
+            return new JewelerDataInitialMessage() { CrafterData = jeweler };
         }
 
-        public GenericBlobMessage GetMysticData()
+        public MysticDataInitialMessage GetMysticData()
         {
             var mystic = D3.ItemCrafting.CrafterData.CreateBuilder()
                 .SetLevel(45)
                 .SetCooldownEnd(0)
                 .Build();
-            return new GenericBlobMessage(Opcodes.GenericBlobMessage11) { Data = mystic.ToByteArray() };
+            return new MysticDataInitialMessage() { CrafterData = mystic };
         }
 
         #endregion
@@ -1434,77 +1456,6 @@ namespace Mooege.Core.GS.Players
             //this.Attributes.SendMessage(this.InGameClient, this.DynamicID); kills the player atm
         }
 
-        public void PlayHeroConversation(int snoConversation, int lineID)
-        {
-            // TODO: Fixme
-            //this.InGameClient.SendMessage(new PlayConvLineMessage()
-            //{
-            //    ActorID = this.DynamicID,
-            //    Field1 = new uint[9]
-            //        {
-            //            this.DynamicID, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF
-            //        },
-
-            //    Params = new PlayLineParams()
-            //    {
-            //        SNOConversation = snoConversation,
-            //        Field1 = 0x00000001,
-            //        Field2 = false,
-            //        LineID = lineID,
-            //        Field4 = 0x00000000,
-            //        Field5 = -1,
-            //        TextClass = (Class)this.Properties.VoiceClassID,
-            //        Gender = (this.Properties.Gender == 0) ? VoiceGender.Male : VoiceGender.Female,
-            //        AudioClass = (Class)this.Properties.VoiceClassID,
-            //        SNOSpeakerActor = this.SNOId,
-            //        Name = this.Properties.Name,
-            //        Field11 = 0x00000002,
-            //        Field12 = -1,
-            //        Field13 = 0x00000069,
-            //        Field14 = 0x0000006E,
-            //        Field15 = 0x00000032
-            //    },
-            //    Field3 = 0x00000069,
-            //});
-
-            //this.OpenConversations.Add(new OpenConversation(
-            //    new EndConversationMessage()
-            //    {
-            //        ActorId = this.DynamicID,
-            //        Field0 = 0x0000006E,
-            //        SNOConversation = snoConversation
-            //    },
-            //    this.InGameClient.Game.TickCounter + 200
-            //));
-        }
-
-        public void CheckOpenConversations()
-        {
-            // TODO: Fixme
-            //if (this.OpenConversations.Count > 0)
-            //{
-            //    foreach (OpenConversation openConversation in this.OpenConversations)
-            //    {
-            //        if (openConversation.endTick <= this.InGameClient.Game.TickCounter)
-            //        {
-            //            this.InGameClient.SendMessage(openConversation.endConversationMessage);
-            //        }
-            //    }
-            //}
-        }
-
-        public struct OpenConversation
-        {
-            public EndConversationMessage endConversationMessage;
-            public int endTick;
-
-            public OpenConversation(EndConversationMessage endConversationMessage, int endTick)
-            {
-                this.endConversationMessage = endConversationMessage;
-                this.endTick = endTick;
-            }
-        }
-
         #endregion
 
         #region gold, heath-glob collection
@@ -1638,5 +1589,29 @@ namespace Mooege.Core.GS.Players
         }
 
         #endregion
+
+        #region StoneOfRecall, CubeOfNephalem, CauldonOfJourdan
+
+        public void EnableStoneOfRecall()
+        {
+            Attributes[GameAttribute.Skill, 0x0002EC66] = 1;
+            Attributes[GameAttribute.Skill_Total, 0x0002EC66] = 1;
+            Attributes.SendChangedMessage(this.InGameClient);
+        }
+
+        public void EnableCauldronOfJordan()
+        {         
+            Attributes[GameAttribute.ItemMeltUnlocked] = true;
+            Attributes.SendChangedMessage(this.InGameClient);
+        }
+
+        public void EnableCubeOfNephalem()
+        {
+            Attributes[GameAttribute.SalvageUnlocked] = true;
+            Attributes.SendChangedMessage(this.InGameClient);
+        }
+
+        #endregion
+
     }
 }

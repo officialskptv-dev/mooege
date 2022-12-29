@@ -49,7 +49,7 @@ namespace Mooege.Core.GS.Generators
             var worldData = (Mooege.Common.MPQ.FileFormats.World)worldAsset.Data;
 
 
-            if (worldData.SceneParams.SceneChunks.Count == 0)
+            if (worldData.IsGenerated)
             {
                 Logger.Error("World {0} [{1}] is a dynamic world! Can't generate dynamic worlds yet!", worldAsset.Name, worldAsset.SNOId);
                 return null;
@@ -114,7 +114,7 @@ namespace Mooege.Core.GS.Generators
                 var scene = new Scene(world, position, sceneChunk.SNOHandle.Id, null)
                 {
                     MiniMapVisibility = SceneMiniMapVisibility.Revealed,                    
-                    FacingAngle = sceneChunk.PRTransform.Quaternion.W,
+                    RotationW = sceneChunk.PRTransform.Quaternion.W,
                     RotationAxis = sceneChunk.PRTransform.Quaternion.Vector3D,
                     SceneGroupSNO = -1
                 };
@@ -153,7 +153,7 @@ namespace Mooege.Core.GS.Generators
                             var subscene = new Scene(world, subScenePosition, subSceneEntry.SNOScene, scene)
                             {
                                 MiniMapVisibility = SceneMiniMapVisibility.Revealed,
-                                FacingAngle = sceneChunk.PRTransform.Quaternion.W,
+                                RotationW = sceneChunk.PRTransform.Quaternion.W,
                                 RotationAxis = sceneChunk.PRTransform.Quaternion.Vector3D,
                                 Specification = sceneChunk.SceneSpecification
                             };
@@ -191,8 +191,9 @@ namespace Mooege.Core.GS.Generators
         /// <param name="world">The world to which to add loaded actors</param>
         private static void loadLevelAreas(Dictionary<int, List<Scene>> levelAreas, World world)
         {
-            /// Each Scene has one to four level areas assigned to it, so each level area consists of at
-            /// least one scene. Scenes marker tags have generic GizmoLocationA to Z that are used 
+            /// Each Scene has one to four level areas assigned to it. I dont know if that means
+            /// the scene belongs to both level areas or if the scene is split
+            /// Scenes marker tags have generic GizmoLocationA to Z that are used 
             /// to provide random spawning possibilities.
             /// For each of these 26 LocationGroups, the LevelArea has a entry in its SpawnType array that defines
             /// what type of actor/encounter/adventure could spawn there
@@ -317,6 +318,49 @@ namespace Mooege.Core.GS.Generators
                         }
                     }
                 }
+
+
+
+                // Load monsters for level area
+                foreach (var scene in levelAreas[la])
+                {
+                    for (int i = 0; i < 100; i++)
+                    {
+                        if (RandomHelper.NextDouble() > 0.8)
+                        {
+                            // TODO Load correct spawn population
+                             // 2.5 is units per square, TODO: Find out how to calculate units per square. Is it F1 * V0.I1 / SquareCount?
+                            int x = RandomHelper.Next(scene.NavMesh.SquaresCountX);
+                            int y = RandomHelper.Next(scene.NavMesh.SquaresCountY);
+
+                            if ((scene.NavMesh.Squares[y * scene.NavMesh.SquaresCountX + x].Flags & Mooege.Common.MPQ.FileFormats.Scene.NavCellFlags.NoSpawn) == 0)
+                            {
+                                loadActor(
+                                    new SNOHandle(6652), 
+                                    new PRTransform
+                                    {
+                                        Vector3D = new Vector3D
+                                        {
+                                            X = (float)(x * 2.5 + scene.Position.X),
+                                            Y = (float)(y * 2.5 + scene.Position.Y),
+                                            Z = scene.NavMesh.Squares[y * scene.NavMesh.SquaresCountX + x].Z + scene.Position.Z
+                                        },
+                                        Quaternion = new Quaternion
+                                        {
+                                            W = (float)(RandomHelper.NextDouble() * System.Math.PI * 2),
+                                            Vector3D = new Vector3D(0, 0, 1)
+                                        }
+                                    },
+                                    world,
+                                    new TagMap()
+                                    );
+                            }
+                        }
+                    }
+                }
+
+
+
             }
         }
 
@@ -332,7 +376,7 @@ namespace Mooege.Core.GS.Generators
                 return;
             }
 
-            actor.FacingAngle = location.Quaternion.W;
+            actor.RotationW = location.Quaternion.W;
             actor.RotationAxis = location.Quaternion.Vector3D;
             actor.EnterWorld(location.Vector3D);
         }
@@ -350,7 +394,7 @@ namespace Mooege.Core.GS.Generators
             {
                 var mpqMarkerSet = MPQStorage.Data.Assets[SNOGroup.MarkerSet][markerSet].Data as Mooege.Common.MPQ.FileFormats.MarkerSet;
                 foreach (var marker in mpqMarkerSet.Markers)
-                    if (marker.Type == Mooege.Common.MPQ.FileFormats.MarkerType.SubScenePosition)      // TODO Make this an enum value /farmy
+                    if (marker.Type == Mooege.Common.MPQ.FileFormats.MarkerType.SubScenePosition)
                         return marker.PRTransform.Vector3D;
             }
 

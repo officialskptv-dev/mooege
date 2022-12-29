@@ -36,7 +36,7 @@ namespace Mooege.Common.Versions
             /// <summary>
             /// Main assemblies version.
             /// </summary>
-            public const string Version = "0.7841.*";
+            public const string Version = "0.7931.*";
         }
 
         /// <summary>
@@ -47,10 +47,11 @@ namespace Mooege.Common.Versions
             /// <summary>
             /// Required client version.
             /// </summary>
-            public const int RequiredClientVersion = 7841;
+            public const int RequiredClientVersion = 7931;
 
             public static Dictionary<string, int> ClientVersionMaps = new Dictionary<string, int>
             {
+                {"Aurora 04768e5dce_public", 7931},
                 {"Aurora 0ee3b2e0e2_public", 7841}, 
                 {"Aurora b4367eba86_public", 7728}
             };
@@ -64,10 +65,24 @@ namespace Mooege.Common.Versions
                 { MooNetClient.ClientPlatform.Mac,"63BC118937E6EA2FAA7B7192676DAEB1B7CA87A9C24ED9F5ACD60E630B4DD7A4".ToByteArray() }
             };
 
-            /// <summary>
-            /// AchievementFile hash.
-            /// </summary>
-            public static string AchievementFileHash = "ef29e59b9394e7c6f694afbb92b70a74c4fd4c96961a8ec490e770371b72e6ab";
+            public static class Achievements
+            {
+                /// <summary>
+                /// AchievementFile hash.
+                /// </summary>
+                public static string AchievementFileHash = "ef29e59b9394e7c6f694afbb92b70a74c4fd4c96961a8ec490e770371b72e6ab";
+
+                /// <summary>
+                /// AchievementFile filename.
+                /// </summary>
+                public static string AchievementFilename = AchievementFileHash + ".achv";
+
+                /// <summary>
+                /// AchievementFile download URL.
+                /// </summary>
+                public static string AchievementURL = "http://us.depot.battle.net:1119/" + AchievementFilename;
+
+            }
         }
 
         /// <summary>
@@ -78,7 +93,7 @@ namespace Mooege.Common.Versions
             /// <summary>
             /// Required MPQ patch version.
             /// </summary>
-            public const int RequiredPatchVersion = 7841;
+            public const int RequiredPatchVersion = 7931;
         }
 
         /// <summary>
@@ -91,10 +106,12 @@ namespace Mooege.Common.Versions
             /// </summary>
             public const int ProtocolHash = unchecked((int)0x208CA037);
 
+            // unchecked((int)0x208CA037)   // 7931
+            // unchecked((int)0x208CA037)   // 7841
             // unchecked((int)0x9E121BBD)   // 7728
             // 0x21EEE08D                   // 7446
 
-            public const string VersionString = "0.4.0.7865";
+            public const string VersionString = "0.4.1.7931";
 
             // 0.3.1.7779 // 7728
             // 0.3.0.7484 // 7447    
